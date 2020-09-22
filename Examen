@@ -1,0 +1,66 @@
+¿Cuál es la función correcta para crear un link interno a una ruta específica?
+url_for()
+¿Para qué nos sirve un Blueprint?
+para modularizar la aplicacion, son un patron de rutas, funciones y templates que nos permiten crear secciones de la aplicacion
+¿Cómo debemos guardar un password del usuario?
+Puede ser el texto original en la base si ademas utilizamos una funcion para cifrarlo de manera segura, solo el usuario debe saber el valor X
+Sintaxis correcta para declarar una ruta dinámica "users" que recibe "user_id" como parámetro
+/users/<user_id>
+¿Qué variable hay que crear en la terminal para activar el debugger y reloader?
+FLASK_DEBUG=1
+¿Cuál es la sintaxis correcta para iniciar un bloque condicional?
+{%
+¿Qué es un flash?
+Un mensaje que presenta informacion al usuario sobre la accion que acaba de realizar
+¿Cuál es el template inicial que tenemos que extender en Bootstrap?
+'base.html'X
+¿Con qué comando creamos una nueva instancia de Flask?
+app=Flask(__name__)
+Flask-Login requiere la implementación de una clase UserModel con propiedades específicas.
+Verdadero
+¿A qué nos referimos con microframework?
+Un framework que no cuenta inicialmente con funcionalidades especificas, como ORM o autenticacion
+Para desplegar una forma y encriptar la sesiones, debemos de declarar esta variable en app.config:
+SECRET_KEY
+Nombre de la variable que Flask expone para acceder a la información de la petición del usuario
+request
+¿Cuál es el comando que agregamos después de instalar GCloud SDK?
+gcloud
+¿Qué tipo de base de datos es Firestore?
+SQL Orientada a Documentos X
+¿Cuál es la variable que expone flask_wtf.FlaskForm para validar formas cuando son enviadas y qué tipo de variable es?
+validate_on_submit, boolean
+¿Con qué comando prendemos el servidor local?
+flask run
+Variable que usamos para detectar si el usuario está firmado. Disponible en cualquier template.
+current_user X
+¿Para qué utilizamos @login_manager.user_loader?
+Es la funcion decorada implementamos una busqueda a la base de datos para cargar los datos del usuario
+¿Cuál es la sintaxis correcta para representar una variable?
+{{ variable }}
+¿Qué debes conocer para comenzar con Flask?
+Conocimientos basicos de python X
+Nombre del método que tenemos que implementar en una nueva instancia de flask_testing.TestCase
+create_testX
+Una aplicación web utiliza el internet y un __ para comunicarse con el servidor.
+Navegador web
+¿Cuál es el decorador para crear una función para manejar errores?
+@app.errorhandler(error)
+¿Qué variable hay que declarar en la terminal para prender el servidor de Flask?
+FLASK_APP=main.py
+¿Cómo se llama el directorio donde Flask busca archivos estáticos por defecto?
+static
+¿Cómo se llama el archivo de configuración de AppEngine?
+app.yaml
+Después de crear un nuevo Blueprint, ¿cómo lo integramos en la aplicación?
+lolaamos la funcion app.register_blueprint() y pasamos nuestra nueva instancia de Blueprint como parametro
+¿Cómo debemos cuidar o manejar nuestro SECRET_KEY de producción?
+No debe estar disponible en el ambiente de produccionX
+¿Para qué sirve Flask?
+Crear aplicaciones web X
+
+
+
+
+
+
