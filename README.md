@@ -69,8 +69,6 @@ Curso de Flask realizado en Platzi
 
 [Clase 34 Editar tareas](#Clase-34-Editar-tareas)
 
-[Clase 35 Deploy a producción con App Engine](#Clase-35-Deploy-a-producción-con-App-Engine)
-
 
 ## Clase 1 Introducción
 
