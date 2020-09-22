@@ -55,21 +55,21 @@ Curso de Flask realizado en Platzi
 
 [Clase 27 Configuración de proyecto en Google Cloud Platform](#Clase-27-Configuración-de-proyecto-en-Google-Cloud-Platform)
 
-[]()
+[Clase 28 Implementación de Firestore](#Clase-28-Implementación-de-Firestore)
 
-[]()
+[Clase 29 Autenticación de usuarios: Login](#Clase-29-Autenticación-de-usuarios-Login)
 
-[]()
+[Clase 30 Autenticación de usuarios: Logout](#Clase-30-Autenticación-de-usuarios-Logout)
 
-[]()
+[Clase 31 Signup](#Clase-31-Signup)
 
-[]()
+[Clase 32 Agregar tareas](#Clase-32-Agregar-tareas)
 
-[]()
+[Clase 33 Eliminar tareas](#Clase-33-Eliminar-tareas)
 
-[]()
+[Clase 34 Editar tareas](#Clase-34-Editar-tareas)
 
-[]()
+[Clase 35 Deploy a producción con App Engine](#Clase-35-Deploy-a-producción-con-App-Engine)
 
 
 ## Clase 1 Introducción
@@ -2361,3 +2361,1804 @@ gcloud auth application-default login
 ![assets/41.png](assets/41.png)
 
 autenticar y dar los permisos para que quede conectada la base de datos con el servidor
+
+## Clase 28 Implementación de Firestore
+
+En el archivo **requirements.txt** crear `firebase-admin`, que es lo que va a ayudar a poder establecer comunicacion con la base de datos
+
+**requirements.txt**
+
+```
+flask 
+flask-bootstrap
+flask-wtf
+flask-testing
+blinker
+firebase-admin
+```
+
+y ejecutar en la consola `pip install -r requirements.txt`
+
+Dentro de la carpeta **app** crear un nuevo archivo llamado **firestore_service.py**, el cual va a llevar la configuracion de la base de datos
+
+Se importa `firebase_admin` y de esta misma se trae `credentials` para comunicarnos con firestore y tambien a `firestore`
+
+Se crea una `credential = credential.ApplicationDefault()` que es la manera en la que nos vamos a comunicar, en consola lo haciamos de esta forma 
+
+```
+gcloud auth application-default login
+```
+Despues `firebase_admin.initialize_app(credential)` donde se manda a la credencial
+
+Se crea una nueva instancia del servicio de firestore `db = firestore.client()` para comunicarnos con la base de datos
+
+y el primer metodo sirve para obtener todo lo que creamos en la coleccion de usuarios 
+
+```
+def get_users():
+    return db.collection('users').get()
+```
+
+**firestore_service.py**
+
+```
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+
+project_id = 'platzi-flask-289823' ## Aqui se debe colocar el id del proyecto de quien lo realice
+
+cred = credentials.ApplicationDefault()
+
+firebase_admin.initialize_app(cred, {
+  'projectId': project_id,
+})
+
+db = firestore.client()
+
+def get_users():
+    return db.collection('users').get()
+```
+
+Ahora en **main.py** se realiza una modificacion para hacer la prueba de que se estan obteniendo los usuarios
+
+se debe importar `from app.firestore_service import get_users` y debajo del contexto indicar que `users = get_users()` y esto va a regresar una lista de usuarios sobre la cual se puede iterar 
+
+```
+    for user in users:
+        print(user)
+
+```
+
+**main.py**
+
+```
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_bootstrap import Bootstrap
+import unittest
+
+from app import create_app
+from app.forms import LoginForm
+from app.firestore_service import get_users
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET'])
+def hello():
+    user_ip = session.get('user_ip')
+    username = session.get('username')
+
+    context ={
+        'user_ip': user_ip,
+        'todos': todos,
+        'username': username
+    }
+
+    users = get_users()
+
+    for user in users:
+        print(user.id)
+        print(user.to_dict()['password'])
+
+    return render_template('hello.html', **context)
+```
+
+luego verificar que este funcionando todo con el servidor prendido y autenticado en la base datos, en caso de que no funcione desactivar todo, reiniciar la consola y hacer paso por paso todo 
+
+
+- hacer login desde la terminal: gcloud auth login
+
+- hacer login application-default: gcloud auth application-default login
+
+- inicializar: gcloud init
+
+- Activar venv source venv/bin/activate
+
+- export FLASK_APP=main.py
+
+- export FLASK_DEBUG=1
+
+- export FLASK_ENV=development
+
+- export GOOGLE_CLOUD_PROJECT='PROJECT_ID'
+
+- flask run
+
+y probar que este funcionando nuevamente, en caso que no, se debera verificar todo o hacer la consulta en internet
+
+En caso de tener mas archivos configurados con Google Cloud, en la terminal escribir
+
+```
+gloud config list
+```
+y verificar que este el nombre del proyecto, si no esta configurado entonces ejecutar la siguiente linea en la terminal
+
+```
+gcloud config set project nombre-del-proyecto
+```
+verificando que todo este funcionando y cargando la pagina 
+
+![assets/42.png](assets/42.png)
+
+en la terminal debe aparecer el password y el nombre de usuario
+
+![assets/43.png](assets/43.png)
+
+si se quiere cambiar el password, hay que cambiar el campo directamente en la base de datos de Googled Cloud
+
+![assets/44.png](assets/44.png)
+
+nuevamente recargar la pagina y luego ir a la terminal para verificar que datos esta obteniendo
+
+![assets/45.png](assets/45.png)
+
+Ahora en **main.py** eliminar la lista de todos `todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']`, guardar y ahora configurar en **firestore_service.py**, la funcion que va a obtener los todos de la base de dato
+
+```
+def get_todos(user_id):
+    return db.collection('users').document(user_id).collection('todos')
+```
+
+**firestore_service.py**
+
+```
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+
+project_id = 'platzi-flask-289823'
+
+cred = credentials.ApplicationDefault()
+
+firebase_admin.initialize_app(cred, {
+  'projectId': project_id,
+})
+
+db = firestore.client()
+
+def get_users():
+    return db.collection('users').get()
+
+def get_todos(user_id):
+    return db.collection('users').document(user_id).collection('todos').get()
+```
+y en **main.py** importar la funcion `get_todos` `from app.firestore_service import get_users, get_todos` par configurar en la ruta hello
+
+**main.py**
+
+```
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_bootstrap import Bootstrap
+import unittest
+
+from app import create_app
+from app.forms import LoginForm
+from app.firestore_service import get_users, get_todos
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET'])
+def hello():
+    user_ip = session.get('user_ip')
+    username = session.get('username')
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username
+    }
+
+    users = get_users()
+
+    for user in users:
+        print(user.id)
+        print(user.to_dict()['password'])
+
+    return render_template('hello.html', **context)
+```
+
+Despues de guardar los cambios ir al navegador, borrar las cookies y autenticarse en la ruta `http://127.0.0.1:5000/auth/login`
+
+![assets/46.png](assets/46.png)
+
+como se puede apreciar no esta obteniendo los datos de la coleccion todos, para eso hay que hacer una modificacion en el archivo **macros.html**, para eso hay que convertir la macro en un diccionario y obtener la descripcion
+
+```
+{% macro render_todo(todo) %}
+    <li>Descripción: {{todo.to_dict().description }}</li>
+{% endmacro %}
+```
+
+posterior a esto guardar el archivo, volver a recargar autenticandose y verificar que aparezca la descripcion de la lista creada en la base de datos
+
+![assets/47.png](assets/47.png)
+
+si se agrega otro documento a la base de datos 
+
+![assets/48.png](assets/48.png)
+
+![assets/49.png](assets/49.png)
+
+![assets/50.png](assets/50.png)
+
+al recargar la pagina nuevamente, debe aparecer la nueva coleccion de todos
+
+![assets/51.png](assets/51.png)
+
+## Clase 29 Autenticación de usuarios: Login
+
+En esta clase vamos a implementar Flask login para poder hacer autenticacion directamente en la consola, verificar el password, que el usuario existe y despues realizar login del usuario, lo primero a realizar es el for que quedo en el contexto de **main.py**
+
+Es decir borrar estas 3 lineas de codigo y guardar cambios
+```
+    for user in users:
+        print(user.id)
+        print(user.to_dict()['password'])
+```
+
+Realizar la instalacion de `flask-login` en los **requirements.txt**
+
+```
+flask 
+flask-bootstrap
+flask-wtf
+flask-testing
+blinker
+firebase-admin
+flask-login
+```
+y ejecutar `pip install -r requirements.txt`
+
+Lo primero que hay que hacer es implementar un login manager el cual va a inicializar la app y tambien va a permitir cargar al usuario con una funcion que se llama LoadUser y de esa manera se podra crear al usuario, con una funcion en la que se hace un query directamente a la base de datos, con el id que mande esta funcion
+
+En el archivo **__init__.py** que esta guardado en la carpeta **app**.
+
+Se debe importar `from flask_login import LoginManager`
+
+Despues a la app se le indica que `login_manager = LoginManager()` y luego decirle cual es la ruta del login que se quiere que maneje `login_manager.login_view = 'auth.login'`
+
+y antes de registrar el Blueprint se indica que debe inicializar la aplicacion `login_manager.init_app(app)`
+
+**__init__.py**
+
+```
+from flask import Flask
+from flask_bootstrap import Bootstrap
+from flask_login import LoginManager
+
+from .config import Config
+from .auth import auth
+from .models import UserModel
+
+
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
+
+
+@login_manager.user_loader
+def load_user(username):
+    return UserModel.query(username)
+
+
+def create_app():
+    app = Flask(__name__)
+    bootstrap = Bootstrap(app)
+
+    app.config.from_object(Config)
+    
+    login_manager.init_app(app)
+
+    app.register_blueprint(auth)
+
+    return app
+```
+
+Hasta hay todo debe funcionar para poder proteger una ruta con un decorador que se llama login_required, este se debe importar en **main.py** `from flask_login import login_required` y el decorador se debe colocar debajo de la ruta hello, posteriormente colocare todo el codigo, por ahora hay que crear un nuevo archivo que se llama UserModel porque flask login solicita tener un modelo de usuario especifico para que se pueda utilizar la funcion **load_user** o **user_loader** que se puede obtener de la documentacion https://flask-login.readthedocs.io/en/latest/, la documentacion indica que se debe crear un modelo de usuario que implemente las propiedades **is_ authenticated, is_active, is_anonymous y get_id()** para que flaks login pueda hacer lo que necesita para que nosotros tengamos un usuario registrado en la sesion y que podamos obtener las propiedades en los templates
+
+A continuacion se va a crear un nuevo archivo en la carpeta **app** que se va a llamar **models.py** donde se va a crear la clase **UserModel** y tambien de `flask_login import UserMixin` se importa UserMixin el cual ya trae las propiedades **is_ authenticated, is_active, is_anonymous y get_id()**
+
+Se crea la clase User Data que recibe por parametro username y el password y luega esta pasa por la clase UserModel que se trae a traves de la data, posteriormente se crea la funcion query para obtener los dqatps que se pasen como usuario y password
+
+**models.py**
+
+```
+from flask_login import UserMixin
+
+from .firestore_service import get_user
+class UserData:
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+
+
+class UserModel(UserMixin):
+    def __init__(self, user_data):
+        """ 
+        :param user_data: UserData
+         """
+        self.id = user_data.username
+        self.password = user_data.password
+
+
+    @staticmethod
+    def query(user_id):
+        user_doc = get_user(user_id)
+        user_data = UserData(
+            username = user_doc.id,
+            password = user_doc.to_dict()['password']
+        )
+
+        return UserModel(user_data)
+```
+
+En el archivo **firestore_service** se trae la funcion 
+
+```
+def get_user(user_id):
+    return db.collection('users').document(user_id).get()
+```
+
+para obtener los datos del usuario en la base de datos
+
+**firestore_service**
+
+```
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+
+project_id = 'platzi-flask-289823'
+
+cred = credentials.ApplicationDefault()
+
+firebase_admin.initialize_app(cred, {
+  'projectId': project_id,
+})
+
+db = firestore.client()
+
+
+def get_users():
+    return db.collection('users').get()
+
+
+def get_user(user_id):
+    return db.collection('users').document(user_id).get()
+
+
+def get_todos(user_id):
+    return db.collection('users').document(user_id).collection('todos').get()
+```
+y como se habia mencionado anteriormente en **main.py** se importa login required y se implementa el decorador debajo de la ruta hello
+
+**main.py**
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required
+
+from app import create_app
+from app.forms import LoginForm
+from app.firestore_service import get_users, get_todos
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = session.get('username')
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username
+    }
+
+    users = get_users()
+
+    return render_template('hello.html', **context)
+```
+
+Al terminar toda la ejecucion del codigo se puede cargar la pagina correctamente pero no hay acceso a la app, esto se configura en la siquiente clase
+
+![assets/52.png](assets/52.png)
+
+## Clase 30 Autenticación de usuarios: Logout
+
+Actualemente solo se esta guardando el usuario en la session, entonces hay que validar despues de que se envie la forma y esta sea valida. Hay que validar que el usuario realmente exista en la base de datos.
+
+En la carpeta **app** y en la subcarpeta **auth**, se creo un archivo llamado **views.py**, alli se tiene que modificar el archivo en la loginform
+
+en el if statements ya esta creado el username y despues de este hay que crear el password y luego hay que buscar ese userDocument y la forma de buscarlo es importando get_user de firestore_service `from app.firestore_service import get_user` y el userdoc es igual a get_user con el username, despues se hace una comparacion entre el password de la base de datos y el ingresado, si son iguales entra a validar si es correcto y despues obtiene el mensaje de bienvenida, tambien fue necesario importar `from app.models import UserModel, UserData` para hacer las validaciones
+
+**views.py**
+
+```
+from flask import render_template, session, redirect, flash, url_for 
+from flask_login import login_user
+
+from app.forms import LoginForm
+
+from . import auth
+from app.firestore_service import get_user
+from app.models import UserModel, UserData
+
+@auth.route('/login', methods=['GET', 'POST'])
+def login():
+    login_form = LoginForm()
+    context = {
+        'login_form': login_form
+    }
+
+    if login_form.validate_on_submit():
+        username = login_form.username.data
+        password = login_form.password.data
+
+        user_doc = get_user(username)
+
+        if user_doc.to_dict() is not None:
+            password_from_db = user_doc.to_dict()['password']
+
+            if password == password_from_db:
+                user_data = UserData(username, password)
+                user = UserModel(user_data)
+
+                login_user(user)
+
+                flash('Bienvenido de nuevo')
+
+                redirect(url_for('hello'))
+            else:
+                flash('La informacion no coincide')
+
+        else:
+            flash('El usuario no existe')
+
+        flash('nombre de usuario registrado con éxito!')
+
+        return redirect(url_for('index'))
+    return render_template('login.html', **context)
+```
+
+Se hace modificacion en **main.py** importando current_user `from flask_login import login_required, current_user` y en username de la funcion hello se reemplaza por `username = current_user.id`
+
+**main.py**
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required, current_user
+
+from app import create_app
+from app.forms import LoginForm
+from app.firestore_service import get_users, get_todos
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = current_user.id
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username
+    }
+
+    return render_template('hello.html', **context)
+```
+
+Ahora al hacer login en la aplicacion ya nos podemos autenticar con la contraseña establecida en la base de datos, la cual en mi caso la habia cambio de password a programador
+
+![assets/53.png](assets/53.png)
+
+Ahora se va a crear un Logout para tener la posibilidad de salir de la aplicacion y modificar el navbar para que si encontramos al usuario, exista la ruta del Logout y si no hay un usuario autenticado exista la ruta del Login
+
+Dentro **views.py** al final del codigo se va a crear la funcion `logout` para configurar la funcion se debe importar `from flask_login import login_user, login_required, logout_user`, va a tener la ruta a logout y redirigir al login con un mensaje de Regresa pronto
+
+```
+from flask import render_template, session, redirect, flash, url_for 
+from flask_login import login_user, login_required, logout_user
+
+from app.forms import LoginForm
+
+from . import auth
+from app.firestore_service import get_user
+from app.models import UserModel, UserData
+
+@auth.route('/login', methods=['GET', 'POST'])
+def login():
+    login_form = LoginForm()
+    context = {
+        'login_form': login_form
+    }
+
+    if login_form.validate_on_submit():
+        username = login_form.username.data
+        password = login_form.password.data
+
+        user_doc = get_user(username)
+
+        if user_doc.to_dict() is not None:
+            password_from_db = user_doc.to_dict()['password']
+
+            if password == password_from_db:
+                user_data = UserData(username, password)
+                user = UserModel(user_data)
+
+                login_user(user)
+
+                flash('Bienvenido de nuevo')
+
+                redirect(url_for('hello'))
+            else:
+                flash('La informacion no coincide')
+
+        else:
+            flash('El usuario no existe')
+
+        return redirect(url_for('index'))
+    return render_template('login.html', **context)
+
+
+@auth.route('logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Regresa pronto')
+    
+    return redirect(url_for('auth.login'))
+```
+Ahora hay que modificar el template **navbar.html**, para que el usuario pueda salir 
+
+```
+<div class="navbar navbar-inverse" role="navigation">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button"
+                    class="navbar-toggle"
+                    data-toggle="collapse"
+                    data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='images/platzi.png') }}"
+                     style="max-width: 48px"
+                     alt="Platzi logo">
+            </a>
+        </div>
+
+        <div class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('auth.logout') }}">Salir</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('index') }}">Inicio</a></li>
+                <li><a href="https://platzi.com" target="_blank">Platzi</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+```
+
+Al ingresar debe aparecer la opcion de salir
+
+![assets/54.png](assets/54.png)
+
+y al dar click en salir el mensaje en http://127.0.0.1:5000/auth/login sera Regresa pronto
+
+![assets/55.png](assets/55.png)
+
+## Clase 31 Signup
+
+En esta clase se hara registro de usuario, para ello se va a crear una nueva ruta llamada **Signup**, donde se utilizar la misma forma de Login pero las validaciones que se haran sobre la ruta van a ser diferentes y tambien se debe encriptar el password por seguridad, **nadie debe conocer el password de los usuarios mas que el propio usuario**
+
+en el archivo **views.py** se va a crear una funcion llamada **singup** el cual va a tener un decorador para establecer la ruta signup
+
+se importa una nueva loginForm pero se va a llamar **signup_form**, se agrega al contexto, se añade el template que aun no se ha creado y se amplia el contexto.
+
+Posteriormente se hace la validacion donde primero se busca si ya existe el usuario, si existe no genera nada, pero si no se debe generar un password seguro para lo cual se importa `from werkzeug.security import genetare_password_hash`, la cual es una libreria de seguridad del password 
+
+para poder asignar al usuario a la base de datos se debe importar el metodo **user_put**, el cual aun no se ha creado pero se establece en el codigo
+
+```
+from flask import render_template, session, redirect, flash, url_for 
+from flask import render_template, session, redirect, flash, url_for 
+from flask_login import login_user, login_required, logout_user
+from werkzeug.security import generate_password_hash
+
+from app.forms import LoginForm
+
+from . import auth
+from app.firestore_service import get_user, user_put
+from app.models import UserModel, UserData
+
+@auth.route('/login', methods=['GET', 'POST'])
+def login():
+    login_form = LoginForm()
+    context = {
+        'login_form': login_form
+    }
+
+    if login_form.validate_on_submit():
+        username = login_form.username.data
+        password = login_form.password.data
+
+        user_doc = get_user(username)
+
+        if user_doc.to_dict() is not None:
+            password_from_db = user_doc.to_dict()['password']
+
+            if password == password_from_db:
+                user_data = UserData(username, password)
+                user = UserModel(user_data)
+
+                login_user(user)
+
+                flash('Bienvenido de nuevo')
+
+                redirect(url_for('hello'))
+            else:
+                flash('La informacion no coincide')
+
+        else:
+            flash('El usuario no existe')
+
+        return redirect(url_for('index'))
+    return render_template('login.html', **context)
+
+@auth.route('signup', methods=['GET', 'POST'])
+def signup():
+    signup_form = LoginForm()
+    context = {
+        'signup_form': signup_form
+    }
+
+    if signup_form.validate_on_submit():
+        username = signup_form.username.data
+        password = signup_form.password.data
+
+        user_doc = get_user(username)
+
+        if user_doc.to_dict() is None:
+
+            password_hash = generate_password_hash(password)
+            user_data = UserData(username, password_hash)
+            user_put(user_data)
+
+            user = UserModel(user_data)
+
+            login_user(user)
+
+            flash('Bienvenido!')
+
+            return redirect(url_for('hello'))
+
+        else:
+            flash('El usuario ay existe')
+
+
+    return render_template('signup.html', **context)
+
+
+@auth.route('logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Regresa pronto')
+    
+    return redirect(url_for('auth.login'))
+```
+
+Ahora hay que crear el template para signup en la carpeta de templates crear el archivo **signup.html**
+
+```
+{% extends 'base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+{{ super() }}
+    Signup
+{% endblock %}
+{% block content %}
+    <h1>Registra una cuenta</h1>
+    <div class="container">
+        {{ wtf.quick_form(signup_form) }}
+    </div>
+
+{% endblock %}
+```
+
+por ultimo crear en el archivo **firestore_service.py** el metodo **user_put** para establecer y agregar los datos a la base datos
+
+```
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+
+project_id = 'platzi-flask-289823'
+
+cred = credentials.ApplicationDefault()
+
+firebase_admin.initialize_app(cred, {
+  'projectId': project_id,
+})
+
+db = firestore.client()
+
+
+def get_users():
+    return db.collection('users').get()
+
+
+def get_user(user_id):
+    return db.collection('users').document(user_id).get()
+
+
+def get_todos(user_id):
+    return db.collection('users').document(user_id).collection('todos').get()
+
+
+def user_put(user_data):
+    user_ref = db.collection('users').document(user_data.username)
+    user_ref.set({ 'password': user_data.password })
+```
+y despues de guardar cambios, cargar nuevamente la pagina , reiniciando cookies, y yendo a la ruta http://127.0.0.1:5000/auth/signup y crear un usuario nuevo
+
+![assets/56.png](assets/56.png)
+
+![assets/57.png](assets/57.png)
+
+y luego verificar en la base de datos que el usuario se esta guardando con la contraseña de forma segura
+
+![assets/58.png](assets/58.png)
+
+## Clase 32 Agregar tareas
+
+En esta clase se hara la implementacion para que cualquier usuario puede agregar tareas dentro de la coleccion todos de la base de datos y lo que se va a hacer es crear una nueva clase que se llama `TodoForm`, en el archivo de **forms.py**
+
+```
+from flask_wtf import FlaskForm
+from wtforms.fields import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired
+
+class LoginForm(FlaskForm):
+    username = StringField('Nombre de usuario', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Enviar')
+
+
+class TodoForm(FlaskForm):
+    description = StringField('Descripción', validators=[DataRequired()])
+    submit = SubmitField('Crear')
+```
+
+y en **main.py** se crea la nueva instancia de TodoForm en el metodo hello, recordar que se debe importar ademas del LoginForm, TodoForm
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required, current_user
+
+from app import create_app
+from app.forms import LoginForm, TodoForm
+from app.firestore_service import get_users, get_todos
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = current_user.id
+    todo_form = TodoForm()
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username,
+        'todo_form': todo_form
+    }
+
+    return render_template('hello.html', **context)
+```
+
+y ahora en el template **hello.html**, se crea un nuevo container para la creacion de tareas
+
+```
+{% extends 'base.html' %}
+{% import 'macros.html' as macros %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+    {{ super() }}
+    Bienvenido
+{% endblock %}
+
+{% block content %}
+
+    {% if username %}
+
+        <h1>Bienvenido, {{ username | capitalize }}</h1> <!-- capitalize es para que la primer letra aparezca en mayuscula -->
+
+    {% endif %}
+
+    {% if user_ip %}
+
+        <h3>Tu Ip es {{ user_ip }}</h3>
+
+    {% else %}
+        <a href="{{ url_for('index') }}">Ir a inicio</a>
+    {% endif %}
+
+    <div class="container">
+        <h2>Crea una nueva tarea</h2>
+
+        {{ wtf.quick_form(todo_form)}}
+    </div>
+
+    <ul>
+        {% for todo in todos %}
+            {{macros.render_todo(todo)}}
+        {% endfor %}
+    </ul>
+{% endblock%}
+```
+
+Guardar y en la ruta hello del navegador ya debe aparecer la opcion de crear una nueva tarea
+
+![assets/59.png](assets/59.png)
+
+pero esto aun no comunica con la base datos, para lo cual en el archivo **firestore_service.py**, hay que crear el metodo para la conexion con la base el cual es **put_todo**, este debe tener en cuenta que debe enviar el path completo, primero va a users luego a user_id y luego a la coleccion todos 
+
+```
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+
+project_id = 'platzi-flask-289823'
+
+cred = credentials.ApplicationDefault()
+
+firebase_admin.initialize_app(cred, {
+  'projectId': project_id,
+})
+
+db = firestore.client()
+
+
+def get_users():
+    return db.collection('users').get()
+
+
+def get_user(user_id):
+    return db.collection('users').document(user_id).get()
+
+
+def get_todos(user_id):
+    return db.collection('users').document(user_id).collection('todos').get()
+
+
+def user_put(user_data):
+    user_ref = db.collection('users').document(user_data.username)
+    user_ref.set({ 'password': user_data.password })
+
+
+def put_todo(user_id, description):
+    todos_collection_ref = db.collection('users').document(user_id).collection('todos')
+    todos_collection_ref.add({'description': description})
+```
+
+este metodo se debe implementar debajo del contexto de la ruta hello del archivo **main.py**, se debe importar desde firestore `from app.firestore_service import get_users, get_todos, put_todo` y hacer una validacion con un if statement para poder crear la tarea
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required, current_user
+
+from app import create_app
+from app.forms import LoginForm, TodoForm
+from app.firestore_service import get_users, get_todos, put_todo
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET', 'POST'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = current_user.id
+    todo_form = TodoForm()
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username,
+        'todo_form': todo_form
+    }
+
+    if todo_form.validate_on_submit():
+        put_todo(user_id = username, description = todo_form.description.data)
+
+        flash('Tu tarea se creo con éxito!')
+
+        return redirect(url_for('hello'))
+
+    return render_template('hello.html', **context)
+```
+
+Guardar, recargar el navegador y crear una tarea.
+
+![assets/60.png](assets/60.png)
+
+Se puede verificar en la base de datos en las subcolecciones las tareas asignadas
+
+## Clase 33 Eliminar tareas
+
+A continuacion dentro de la base de datos de Google Cloud, borrar las tareas que existan en la coleccion de todos, de los usuarios que existan, porque se va a agregar una nueva propiedad a los todos para decidir cuando una tarea este hecha o no
+
+![assets/61.png](assets/61.png)
+
+![assets/62.png](assets/62.png)
+
+en el archivo de **firestore_service.py** en el metodo `put_todo`, se va a agregar un nuevo field que se va a llamar `done` de tipo booleano y se va a inicializar en false, es decir que la tarea no esta completa
+
+Adicional tambien se crea el metodo `delete_todo` que recibe como parametro al `user_id` y un `todo_id` que despues va a pasar por **main.py**
+
+```
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+
+project_id = 'platzi-flask-289823'
+
+cred = credentials.ApplicationDefault()
+
+firebase_admin.initialize_app(cred, {
+  'projectId': project_id,
+})
+
+db = firestore.client()
+
+
+def get_users():
+    return db.collection('users').get()
+
+
+def get_user(user_id):
+    return db.collection('users').document(user_id).get()
+
+
+def get_todos(user_id):
+    return db.collection('users').document(user_id).collection('todos').get()
+
+
+def user_put(user_data):
+    user_ref = db.collection('users').document(user_data.username)
+    user_ref.set({ 'password': user_data.password })
+
+
+def put_todo(user_id, description):
+    todos_collection_ref = db.collection('users').document(user_id).collection('todos')
+    todos_collection_ref.add({'description': description, 'done': False })
+
+
+def delete_todo(user_id, todo_id):
+    #todo_ref = db.collection('users').document(user_id).collection('todos').document(todo_id)
+    #Otra forma de establecer la ruta anterior es la siguiente
+    todo_ref = db.document('users/{}/todos/{}'.format(user_id, todo_id))
+    todo_ref.delete()
+```
+
+En el archivo **main.py**, se genera una funcion que tendra que relacionar al estado de borrado cuando se borre una tarea 
+
+la funcion se va a llamar `delete` y esta va a ser una ruta dinamica establecida a traves de un decorador que recibe a todos/delete y el id del todo y en la funcion se debe hacer referencia al id del todo, y la ruta solo va a recibir POST, luego se implementa la funcion creada en **firestore_service**, importando la funcion delete_todo `from app.firestore_service import get_users, get_todos, put_todo, delete_todo`
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required, current_user
+
+from app import create_app
+from app.forms import LoginForm, TodoForm
+from app.firestore_service import get_users, get_todos, put_todo, delete_todo
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET', 'POST'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = current_user.id
+    todo_form = TodoForm()
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username,
+        'todo_form': todo_form
+    }
+
+    if todo_form.validate_on_submit():
+        put_todo(user_id = username, description = todo_form.description.data)
+
+        flash('Tu tarea se creo con éxito!')
+
+        return redirect(url_for('hello'))
+
+    return render_template('hello.html', **context)
+
+
+@app.route('/todos/delete/<todo_id>', methods=['POST'])
+def delete(todo_id):
+    user_id = current_user.id
+    delete_todo(user_id=user_id, todo_id=todo_id)
+
+    return redirect(url_for('hello'))
+```
+
+Y ahora lo que hay que hacer es modificar el macro que renderea cada uno de los todos para que incluya otra forma que va a ser enviada mediante POST a delete, esto se va a realzar a traves de Bootstrap para validar el done 
+
+**macros.html**
+
+```
+{% macro render_todo(todo) %}
+    <li class="list-group-item">
+        <span class="badge">{{ todo.to_dict().done }}</span>
+        Descripción: {{todo.to_dict().description }}
+    </li>   
+{% endmacro %}
+```
+
+tambien hay que modificar **hello.html** 
+
+```
+{% extends 'base.html' %}
+{% import 'macros.html' as macros %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+    {{ super() }}
+    Bienvenido
+{% endblock %}
+
+{% block content %}
+
+    {% if username %}
+
+        <h1>Bienvenido, {{ username | capitalize }}</h1> <!-- capitalize es para que la primer letra aparezca en mayuscula -->
+
+    {% endif %}
+
+    {% if user_ip %}
+
+        <h3>Tu Ip es {{ user_ip }}</h3>
+
+    {% else %}
+        <a href="{{ url_for('index') }}">Ir a inicio</a>
+    {% endif %}
+
+    <div class="container">
+        <h2>Crea una nueva tarea</h2>
+
+        {{ wtf.quick_form(todo_form)}}
+    </div>
+
+    <ul class="list-group"> 
+        {% for todo in todos %}
+            {{macros.render_todo(todo)}}
+        {% endfor %}
+    </ul>
+{% endblock%}
+```
+
+Ahora se puede recargar el navegador y crear nuevamente un tarea y verificar el estado en el que estada por default deberia aparecer en false
+
+![assets/63.png](assets/63.png)
+
+Y ahora hay que agregar el boton que diga borrar, el cual va a ser una forma y esta forma va hacer una accion la cual va a llamar a la funcion delete 
+
+En el archivo **forms.py** crear una nueva clase que se llame `DeleteForm`
+
+```
+from flask_wtf import FlaskForm
+from wtforms.fields import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired
+
+class LoginForm(FlaskForm):
+    username = StringField('Nombre de usuario', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Enviar')
+
+
+class TodoForm(FlaskForm):
+    description = StringField('Descripción', validators=[DataRequired()])
+    submit = SubmitField('Crear')
+
+
+class DeleteTodoForm(FlaskForm):
+    submit = SubmitField('Borrar')
+```
+
+La forma se debe pasar a la funcion hello del archivo **main.py**, para que la pueda utilizar el macro y se renderee en este. lo primero que hay que hacer es importar la forma `from app.forms import LoginForm, TodoForm, DeleteTodoForm` y luego crearla en el contexto de la funcion hello
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required, current_user
+
+from app import create_app
+from app.forms import LoginForm, TodoForm, DeleteTodoForm
+from app.firestore_service import get_users, get_todos, put_todo, delete_todo
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET', 'POST'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = current_user.id
+    todo_form = TodoForm()
+    delete_form = DeleteTodoForm()
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username,
+        'todo_form': todo_form,
+        'delete_form': delete_form,
+    }
+
+    if todo_form.validate_on_submit():
+        put_todo(user_id = username, description = todo_form.description.data)
+
+        flash('Tu tarea se creo con éxito!')
+
+        return redirect(url_for('hello'))
+
+    return render_template('hello.html', **context)
+
+
+@app.route('/todos/delete/<todo_id>', methods=['POST'])
+def delete(todo_id):
+    user_id = current_user.id
+    delete_todo(user_id=user_id, todo_id=todo_id)
+
+    return redirect(url_for('hello'))
+```
+
+Se aplica un ultimo cambio a **hello.html** para que reciba el delete cuando se accione
+
+```
+{% extends 'base.html' %}
+{% import 'macros.html' as macros %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+    {{ super() }}
+    Bienvenido
+{% endblock %}
+
+{% block content %}
+
+    {% if username %}
+
+        <h1>Bienvenido, {{ username | capitalize }}</h1> <!-- capitalize es para que la primer letra aparezca en mayuscula -->
+
+    {% endif %}
+
+    {% if user_ip %}
+
+        <h3>Tu Ip es {{ user_ip }}</h3>
+
+    {% else %}
+        <a href="{{ url_for('index') }}">Ir a inicio</a>
+    {% endif %}
+
+    <div class="container">
+        <h2>Crea una nueva tarea</h2>
+
+        {{ wtf.quick_form(todo_form)}}
+    </div>
+
+    <ul class="list-group"> 
+        {% for todo in todos %}
+            {{macros.render_todo(todo, delete_form)}}
+        {% endfor %}
+    </ul>
+{% endblock%}
+```
+
+Tambien se debe traer a las macros importando Bootstrap en el archivo **macros.html**
+
+```
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% macro render_todo(todo) %}
+    <li class="list-group-item">
+        <span class="badge">{{ todo.to_dict().done }}</span>
+        Descripción: {{todo.to_dict().description }}
+
+        {{ wtf.quick_form(delete_form, action=url_for('delete', todo_id=todo.id)) }}
+    </li>   
+{% endmacro %}
+```
+
+y ahora al recargar el navegador se puede crear y borrar una tarea
+
+![assets/64.png](assets/64.png)
+
+![assets/65.png](assets/65.png)
+
+## Clase 34 Editar tareas
+
+En esta clase se va a actualizar el Field done, el cual de momento aparece en estado falso
+
+En el archivo **firestore_service.py**, se implementa la funcion `update_todo`, el cual recibe un user_id, un todo_id y un done, como se va a utilizar la variable `todo_ref`, se crea una funcion privada que se llama `_get_todo_ref()`, la cual recibe un user_id y un todo_id y la funcion regresa la referencia del todo y asi cambia lo que recibia anteriormente en la funcion `delete_todo` y tambien en `update_todo` y queda de la siguiente forma
+
+**firestore_service.py**
+
+```
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+
+project_id = 'platzi-flask-289823'
+
+cred = credentials.ApplicationDefault()
+
+firebase_admin.initialize_app(cred, {
+  'projectId': project_id,
+})
+
+db = firestore.client()
+
+
+def get_users():
+    return db.collection('users').get()
+
+
+def get_user(user_id):
+    return db.collection('users').document(user_id).get()
+
+
+def get_todos(user_id):
+    return db.collection('users').document(user_id).collection('todos').get()
+
+
+def user_put(user_data):
+    user_ref = db.collection('users').document(user_data.username)
+    user_ref.set({ 'password': user_data.password })
+
+
+def put_todo(user_id, description):
+    todos_collection_ref = db.collection('users').document(user_id).collection('todos')
+    todos_collection_ref.add({'description': description, 'done': False })
+
+
+def delete_todo(user_id, todo_id):
+    #todo_ref = db.collection('users').document(user_id).collection('todos').document(todo_id)
+    #Otra forma de establecer la ruta anterior es la siguiente
+    todo_ref = _get_todo_ref(user_id, todo_id)
+    todo_ref.delete()
+
+
+def update_todo(user_id, todo_id, done):
+    todo_done = not bool(done)
+    todo_ref = _get_todo_ref(user_id, todo_id)
+    todo_ref.update({'done': todo_done})
+
+
+def _get_todo_ref(user_id, todo_id):
+    return db.document('users/{}/todos/{}'.format(user_id, todo_id))
+```
+
+Dentro del archivo **main.py** se crea la funcion **update**, se debe importar la forma `from app.forms import TodoForm, DeleteTodoForm, UpdateTodoForm`, luego se debe integrar la forma en el contexto de la funcion hello
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required, current_user
+
+from app import create_app
+from app.forms import TodoForm, DeleteTodoForm, UpdateTodoForm
+from app.firestore_service import get_users, get_todos, put_todo, delete_todo
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET', 'POST'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = current_user.id
+    todo_form = TodoForm()
+    delete_form = DeleteTodoForm()
+    update_form = UpdateTodoForm()
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username,
+        'todo_form': todo_form,
+        'delete_form': delete_form,
+        'update_form': update_form,
+    }
+
+    if todo_form.validate_on_submit():
+        put_todo(user_id = username, description = todo_form.description.data)
+
+        flash('Tu tarea se creo con éxito!')
+
+        return redirect(url_for('hello'))
+
+    return render_template('hello.html', **context)
+
+
+@app.route('/todos/delete/<todo_id>', methods=['POST'])
+def delete(todo_id):
+    user_id = current_user.id
+    delete_todo(user_id=user_id, todo_id=todo_id)
+
+    return redirect(url_for('hello'))
+
+
+@app.route('/todos/update/<todo_id>/<int:done>', methods=['POST'])
+def update(todo_id, done):
+    user_id = current_user.id
+
+    pass
+```
+
+y ahora se debe rendear en **macros.html**, para eso se deben pasar los parametros de update_form e implementar con wtf adicionando el parametro done
+
+```
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% macro render_todo(todo, delete_form, update_form) %}
+    <li class="list-group-item">
+        <span class="badge">{{ todo.to_dict().done }}</span>
+        Descripción: {{todo.to_dict().description }}
+
+        {{ wtf.quick_form(delete_form, action = url_for('delete', todo_id = todo.id)) }}
+        {{ wtf.quick_form(update_form, action = url_for('update', todo_id = todo.id, done= todo.to_dict().done)) }}
+    </li>   
+{% endmacro %}
+```
+
+Esto se debe hacer en **hello.html** pasando el parametro de update_form en el list_group
+
+```
+{% extends 'base.html' %}
+{% import 'macros.html' as macros %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+    {{ super() }}
+    Bienvenido
+{% endblock %}
+
+{% block content %}
+
+    {% if username %}
+
+        <h1>Bienvenido, {{ username | capitalize }}</h1> <!-- capitalize es para que la primer letra aparezca en mayuscula -->
+
+    {% endif %}
+
+    {% if user_ip %}
+
+        <h3>Tu Ip es {{ user_ip }}</h3>
+
+    {% else %}
+        <a href="{{ url_for('index') }}">Ir a inicio</a>
+    {% endif %}
+
+    <div class="container">
+        <h2>Crea una nueva tarea</h2>
+
+        {{ wtf.quick_form(todo_form)}}
+    </div>
+
+    <ul class="list-group"> 
+        {% for todo in todos %}
+            {{ macros.render_todo(todo, delete_form, update_form) }}
+        {% endfor %}
+    </ul>
+{% endblock %}
+```
+
+En el archivo **main.py** se debe importar de **firestore_service.py**, la funcion update `from app.firestore_service import get_users, get_todos, put_todo, delete_todo, update_todo` y luego pasarlo por la funcion `update` del archivo main.py
+
+```
+import unittest
+from flask import request, make_response,redirect, render_template, session, url_for, flash
+from flask_login import login_required, current_user
+
+from app import create_app
+from app.forms import TodoForm, DeleteTodoForm, UpdateTodoForm
+from app.firestore_service import get_users, get_todos, put_todo, delete_todo, update_todo
+
+app = create_app()
+
+
+todos = ['Comprar cafe', 'Enviar solicitud de compra', 'Entregar video a productor']
+
+
+@app.cli.command()
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner().run(tests)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html', error=error)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template('500.html', error=error)
+
+
+@app.route('/')
+def index():
+    user_ip = request.remote_addr
+
+    response = make_response(redirect('/hello'))
+
+    session['user_ip'] = user_ip
+
+    return response
+
+@app.route('/hello', methods = ['GET', 'POST'])
+@login_required
+def hello():
+    user_ip = session.get('user_ip')
+    username = current_user.id
+    todo_form = TodoForm()
+    delete_form = DeleteTodoForm()
+    update_form = UpdateTodoForm()
+
+    context ={
+        'user_ip': user_ip,
+        'todos': get_todos(user_id=username),
+        'username': username,
+        'todo_form': todo_form,
+        'delete_form': delete_form,
+        'update_form': update_form,
+    }
+
+    if todo_form.validate_on_submit():
+        put_todo(user_id = username, description = todo_form.description.data)
+
+        flash('Tu tarea se creo con éxito!')
+
+        return redirect(url_for('hello'))
+
+    return render_template('hello.html', **context)
+
+
+@app.route('/todos/delete/<todo_id>', methods=['POST'])
+def delete(todo_id):
+    user_id = current_user.id
+    delete_todo(user_id=user_id, todo_id=todo_id)
+
+    return redirect(url_for('hello'))
+
+
+@app.route('/todos/update/<todo_id>/<int:done>', methods=['POST'])
+def update(todo_id, done):
+    user_id = current_user.id
+
+    update_todo(user_id=user_id, todo_id=todo_id, done=done)
+
+    return redirect(url_for('hello')) 
+```
+
+Al recargar el navegador la dar click en Actualizar va a aparecer el estado de True o False
+
+![assets/66.png](assets/66.png)
+
